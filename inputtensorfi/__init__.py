@@ -1,1 +1,1 @@
-from inputtensorfi.__input_tensor_fi import InputTensorFI
+from inputtensorfi._input_tensor_fi import InputTensorFI

@@ -9,13 +9,14 @@ from inputtensorfi.manipulation.img.utils import (
     build_perturb_image,
     build_perturb_image_by_bit_fault,
     build_perturb_image_tensor,
+    build_perturb_image_by_bit_fault_tensor,
 )
 
 
 class FiLayer(tf.keras.layers.Layer, metaclass=ABCMeta):
     """A Keras layer marked with fault injection.
 
-    This is an abstrac class. Implementations are stored along this class.
+    This is an abstract class. Implementations are stored along this class.
     """
 
     perturb_image: Callable
@@ -33,7 +34,7 @@ class FiLayer(tf.keras.layers.Layer, metaclass=ABCMeta):
 
     def call(self, input, training=False):
         if not training:
-            return tf.map_fn(
+            return tf.vectorized_map(
                 fn=self.perturb_image,
                 elems=input,
             )
@@ -45,7 +46,11 @@ class FiLayer(tf.keras.layers.Layer, metaclass=ABCMeta):
 class PixelFiLayer(FiLayer):
     """A layer that modify the pixels of the input.
 
-    Only accepts 2D RGB 8 bit images."""
+    Only accepts 2D RGB 8 bit images.
+
+    Implementation use numpy_function and can be slow.
+    Prefer PixelFiLayerTF.
+    """
 
     def __init__(self, pixels: np.ndarray, dtype: tf.DType = tf.uint8):
         super(PixelFiLayer, self).__init__(dtype=dtype)
@@ -67,8 +72,8 @@ class PixelBitFiLayer(FiLayer):
         self.bit_faults = bit_faults
 
         transform = build_perturb_image_by_bit_fault(bit_faults)
-        self.perturb_image = (
-            lambda x: tf.numpy_function(transform, [x], self.dtype),
+        self.perturb_image = lambda x: tf.numpy_function(
+            transform, [x], self.dtype
         )
 
     def get_config(self):
@@ -92,4 +97,21 @@ class PixelFiLayerTF(FiLayer):
     def get_config(self):
         base_config = super(PixelFiLayerTF, self).get_config()
         base_config["pixels"] = [pixel.to_dict() for pixel in self.pixels]
+        return base_config
+
+
+class PixelBitFiLayerTF(FiLayer):
+    def __init__(self, bit_faults: np.ndarray, dtype: tf.DType = tf.uint8):
+        super(PixelBitFiLayerTF, self).__init__(dtype=dtype)
+        self.bit_faults = bit_faults
+
+        self.perturb_image = build_perturb_image_by_bit_fault_tensor(
+            bit_faults
+        )
+
+    def get_config(self):
+        base_config = super(PixelBitFiLayerTF, self).get_config()
+        base_config["bit_faults"] = [
+            bit_fault.to_dict() for bit_fault in self.bit_faults
+        ]
         return base_config
