@@ -41,8 +41,9 @@ def __prepare_model(data_train, data_test):
         model: tf.keras.Model = vgg16()
         logdir = "logs/fit/" + datetime.now().strftime("%Y%m%d-%H%M%S")
         tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=logdir)
-        model.fit_generator(
-            datagen.flow(*data_train, batch_size=128),
+        model.fit(
+            *data_train,
+            batch_size=128,
             steps_per_epoch=391,
             epochs=200,
             validation_data=data_test,
