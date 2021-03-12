@@ -4,7 +4,7 @@ from datetime import datetime
 import numpy as np
 import tensorflow as tf
 from inputtensorfi import InputTensorFI
-from inputtensorfi.layers import PixelFiLayerTF
+from inputtensorfi.layers import PixelFiLayer, PixelFiLayerTF
 from inputtensorfi.manipulation.img.faults import PixelFault
 from integration_tests.models.my_vgg import my_vgg
 from tensorflow.keras.datasets import cifar10
@@ -43,14 +43,19 @@ def __prepare_model(data_train, data_test):
     return model
 
 
-def test_cifar10():
+def test_cifar10_one():
     data_train, data_test = __prepare_datasets()
     model = __prepare_model(data_train, data_test)
 
     print("---Evaluation---")
-    loss, acc = model.evaluate(*data_test)
+    image_id = 541
+    x_test, y_test = data_test
+    x = x_test[image_id]
+    y_true = y_test[image_id]
+    result = model.predict(np.array([x]))
 
-    print(f"loss={loss}, acc={acc}")
+    print(f"result={result}")
+    print(f"y_true={y_true}")
 
     print("---Fault Injection---")
     pixels = np.array(
@@ -70,13 +75,10 @@ def test_cifar10():
     )
 
     print("---Evaluation with FI---")
-    logdir = "logs/compile/" + datetime.now().strftime("%Y%m%d-%H%M%S")
-    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=logdir)
-    loss, acc = faulted_model.evaluate(
-        *data_test, callbacks=[tensorboard_callback]
-    )
-    print(f"loss={loss}, acc={acc}")
+    result = faulted_model.predict(np.array([x_test[image_id]]))
+    print(f"result={result}")
+    print(f"y_true={y_true}")
 
 
 if __name__ == "__main__":
-    test_cifar10()
+    test_cifar10_one()
