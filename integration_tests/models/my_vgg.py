@@ -14,6 +14,7 @@ def my_vgg():
                 padding="same",
                 input_shape=(32, 32, 3),
             ),
+            tf.keras.layers.Dropout(0.3),
             tf.keras.layers.Conv2D(
                 32,
                 (3, 3),
@@ -31,6 +32,7 @@ def my_vgg():
                 kernel_regularizer=l2(0.001),
                 padding="same",
             ),
+            tf.keras.layers.Dropout(0.3),
             tf.keras.layers.Conv2D(
                 64,
                 (3, 3),
@@ -48,6 +50,16 @@ def my_vgg():
                 kernel_regularizer=l2(0.001),
                 padding="same",
             ),
+            tf.keras.layers.Dropout(0.3),
+            tf.keras.layers.Conv2D(
+                128,
+                (3, 3),
+                activation="relu",
+                kernel_initializer="he_uniform",
+                kernel_regularizer=l2(0.001),
+                padding="same",
+            ),
+            tf.keras.layers.Dropout(0.3),
             tf.keras.layers.Conv2D(
                 128,
                 (3, 3),
@@ -70,7 +82,7 @@ def my_vgg():
 
     model.compile(
         optimizer="adam",
-        loss=tf.losses.CategoricalCrossentropy(from_logits=True),
-        metrics=[tf.metrics.CategoricalAccuracy()],
+        loss="categorical_crossentropy",
+        metrics=["categorical_accuracy"],
     )
     return model

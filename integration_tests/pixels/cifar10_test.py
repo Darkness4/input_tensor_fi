@@ -6,12 +6,12 @@ import tensorflow as tf
 from inputtensorfi import InputTensorFI
 from inputtensorfi.layers import PixelFiLayerTF
 from inputtensorfi.manipulation.img.faults import PixelFault
-from integration_tests.models.vgg16 import vgg16
+from integration_tests.models.my_vgg import my_vgg
 from tensorflow.keras.datasets import cifar10
 from tensorflow.keras.utils import to_categorical
 
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(FILE_PATH, "../models/vgg16.h5")
+MODEL_PATH = os.path.join(FILE_PATH, "../models/my_vgg.h5")
 os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
 
 
@@ -38,7 +38,7 @@ def __prepare_model(data_train, data_test):
             cval=0.0,
         )
         datagen.fit(data_train[0])
-        model: tf.keras.Model = vgg16()
+        model: tf.keras.Model = my_vgg()
         logdir = "logs/fit/" + datetime.now().strftime("%Y%m%d-%H%M%S")
         tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=logdir)
         model.fit(
