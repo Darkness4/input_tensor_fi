@@ -1,62 +1,67 @@
 """Utilities for image manipulation."""
 
 import numpy as np
-from inputtensorfi.manipulation.img.bit_fault import BitFault
-from inputtensorfi.manipulation.img.pixel_fault import PixelFault
+from inputtensorfi.manipulation.img.faults import BitFault, PixelFault
+import logging
 
 
-def perturb_image(
+def build_perturb_image(
     pixels: np.ndarray,
-    img: np.ndarray,
-) -> np.ndarray:
-    """Change the pixels of the [img] according to [pixels].
-
-    Note: the original image doesn't change.
+):
+    """Build a Fault Injector using [pixels] to be faulted.
 
     Args:
         pixels (np.ndarray(dtype=PixelFault)):
-            A list of pixels to be faulted.
-        img (np.ndarray): A 2D RGB image.
-                An img[x: int, y: int] = (r: int, g: int, b: int)
-
-    Returns:
-        img: 2D RGB image.
+                A list of pixels to be faulted.
     """
 
-    copy = img.copy()
+    def perturb_image(img: np.ndarray):
+        """Change the pixels of the [img] according to [pixels].
 
-    for pixel in np.nditer(pixels, flags=["refs_ok"]):
-        item = pixel.item()
-        assert isinstance(item, PixelFault)
-        copy[item.x, item.y] = item.rgb
+        Args:
+            img (np.ndarray): A 2D RGB image.
+                An img[x: int, y: int] = (r: int, g: int, b: int)
 
-    return copy
+        Returns:
+            copy: 2D RGB image.
+        """
+        logging.debug(f"Pertubating an image of shape {img.shape}")
+        for pixel in np.nditer(pixels, flags=["refs_ok"]):
+            item = pixel.item()
+            assert isinstance(item, PixelFault)
+            img[item.x, item.y] = item.rgb
+
+        return img
+
+    return perturb_image
 
 
-def perturb_image_by_bit_fault(
-    bit_faults: np.ndarray, img: np.ndarray
-) -> np.ndarray:
-    """Change the pixels of the [img] according to [bit_faults].
-
-    Note: the original image doesn't change.
+def build_perturb_image_by_bit_fault(bit_faults: np.ndarray):
+    """Build a Fault Injector using [bit_faults] to be faulted.
 
     Args:
-        bit_faults (np.ndarray(dtype=BitFault)):
+        bit_faults (dtype=BitFault):
                 A list of pixels to be bit-faulted.
-        img (np.ndarray): A 2D RGB image.
-                An img[x: int, y: int] = (r: int, g: int, b: int)
-
-    Returns:
-        np.ndarray: 2D RGB image.
     """
 
-    copy = img.copy()
+    def perturb_image_by_bit_fault(img: np.ndarray) -> np.ndarray:
+        """Change the pixels of the [img] according to [bit_faults].
 
-    for bit_fault in np.nditer(bit_faults, flags=["refs_ok"]):
-        item = bit_fault.item()
-        assert isinstance(item, BitFault)
+        Args:
+            img (np.ndarray): A 2D RGB image.
+                    An img[x: int, y: int] = (r: int, g: int, b: int)
 
-        copy[item.x, item.y, item.rgb] = item.bit_action.call(
-            copy[item.x, item.y, item.rgb], item.bit
-        )
-    return copy
+        Returns:
+            copy: 2D RGB image.
+        """
+        logging.debug(f"Pertubating an image of shape {img.shape}")
+        for bit_fault in np.nditer(bit_faults, flags=["refs_ok"]):
+            item = bit_fault.item()
+            assert isinstance(item, BitFault)
+
+            img[item.x, item.y, item.rgb] = item.bit_action.call(
+                img[item.x, item.y, item.rgb], item.bit
+            )
+        return img
+
+    return perturb_image_by_bit_fault

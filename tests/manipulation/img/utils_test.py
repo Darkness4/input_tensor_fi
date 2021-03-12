@@ -1,8 +1,7 @@
-from inputtensorfi.manipulation.bit.action import BitFlip
-from inputtensorfi.manipulation.img.bit_fault import BitFault
 import numpy as np
+from inputtensorfi.manipulation.bit.action import BitFlip
 from inputtensorfi.manipulation.img import utils
-from inputtensorfi.manipulation.img.pixel_fault import PixelFault
+from inputtensorfi.manipulation.img.faults import BitFault, PixelFault
 from tensorflow.keras.datasets import cifar10
 
 
@@ -13,7 +12,9 @@ def test_perturb_image():
     )
     (_, _), (x_test, _) = cifar10.load_data()
     image = x_test[0]
-    images_pertubed = utils.perturb_image(pixels, image)
+    perturb_image = utils.build_perturb_image(pixels)
+
+    images_pertubed = perturb_image(image)
 
     assert np.array_equal(images_pertubed[16, 16], np.array((255, 255, 0)))
     assert np.array_equal(images_pertubed[5, 5], np.array((255, 255, 0)))
@@ -25,7 +26,11 @@ def test_perturb_image_by_bit_fault():
         dtype=object,
     )
     (_, _), (x_test, _) = cifar10.load_data()
-    image = x_test[0]
-    images_pertubed = utils.perturb_image_by_bit_fault(bit_faults, image)
+    image = x_test[0].copy()
+    perturb_image_by_bit_fault = utils.build_perturb_image_by_bit_fault(
+        bit_faults
+    )
 
-    assert image[16, 16, 0] != images_pertubed[16, 16, 0]
+    images_pertubed = perturb_image_by_bit_fault(image)
+
+    assert x_test[0, 16, 16, 0] != images_pertubed[16, 16, 0]
