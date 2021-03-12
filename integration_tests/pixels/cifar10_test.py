@@ -6,12 +6,12 @@ import tensorflow as tf
 from inputtensorfi import InputTensorFI
 from inputtensorfi.layers import PixelFiLayerTF
 from inputtensorfi.manipulation.img.faults import PixelFault
-from integration_tests.models.my_vgg import my_vgg
+from integration_tests.models.vgg16 import vgg16
 from tensorflow.keras.datasets import cifar10
 from tensorflow.keras.utils import to_categorical
 
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(FILE_PATH, "../models/my_vgg.h5")
+MODEL_PATH = os.path.join(FILE_PATH, "../models/vgg16.h5")
 os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
 
 
@@ -30,12 +30,23 @@ def __prepare_model(data_train, data_test):
     else:
         print("---Training Model---")
         print(f"GPU IS AVAILABLE: {tf.config.list_physical_devices('GPU')}")
-        model: tf.keras.Model = my_vgg()
-        model.fit(
-            *data_train,
-            epochs=100,
-            batch_size=64,
+        datagen = tf.keras.preprocessing.image.ImageDataGenerator(
+            horizontal_flip=True,
+            width_shift_range=0.125,
+            height_shift_range=0.125,
+            fill_mode="constant",
+            cval=0.0,
+        )
+        datagen.fit(data_train[0])
+        model: tf.keras.Model = vgg16()
+        logdir = "logs/fit/" + datetime.now().strftime("%Y%m%d-%H%M%S")
+        tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=logdir)
+        model.fit_generator(
+            datagen.flow(*data_train, batch_size=128),
+            steps_per_epoch=391,
+            epochs=200,
             validation_data=data_test,
+            callbacks=[tensorboard_callback],
         )
         model.save(MODEL_PATH)
 

@@ -16,6 +16,7 @@ setup(
         "matplotlib>=3,<4",
         "tensorflow>=2,<3",
         "numpy",
+        "scipy",
     ],
     classifiers=[
         "Intended Audience :: Developers",
