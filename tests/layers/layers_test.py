@@ -1,9 +1,8 @@
-from inputtensorfi.manipulation.img.bit_fault import BitFault
 import numpy as np
 import tensorflow as tf
+from inputtensorfi.layers import PixelBitFiLayer, PixelFiLayer
 from inputtensorfi.manipulation.bit.action import BitFlip
-from inputtensorfi.layers.layers import PixelFiLayer, PixelBitFiLayer
-from inputtensorfi.manipulation.img.pixel_fault import PixelFault
+from inputtensorfi.manipulation.img.faults import BitFault, PixelFault
 from tensorflow.keras.datasets import cifar10
 
 

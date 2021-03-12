@@ -61,9 +61,8 @@ def test_cifar10():
         ],
     )
 
-    logdir = "logs/compile/" + datetime.now().strftime("%Y%m%d-%H%M%S")
-
     print("---Evaluation with FI---")
+    logdir = "logs/compile/" + datetime.now().strftime("%Y%m%d-%H%M%S")
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=logdir)
     loss, acc = faulted_model.evaluate(
         x_test, y_test, callbacks=[tensorboard_callback]
