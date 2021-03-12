@@ -152,31 +152,31 @@ model.summary()
 ```sh
 Model: "sequential"
 _________________________________________________________________
-Layer (type)                 Output Shape              Param #   
+Layer (type)                 Output Shape              Param #
 =================================================================
-conv2d (Conv2D)              (None, 32, 32, 32)        896       
+conv2d (Conv2D)              (None, 32, 32, 32)        896
 _________________________________________________________________
-conv2d_1 (Conv2D)            (None, 32, 32, 32)        9248      
+conv2d_1 (Conv2D)            (None, 32, 32, 32)        9248
 _________________________________________________________________
-max_pooling2d (MaxPooling2D) (None, 16, 16, 32)        0         
+max_pooling2d (MaxPooling2D) (None, 16, 16, 32)        0
 _________________________________________________________________
-conv2d_2 (Conv2D)            (None, 16, 16, 64)        18496     
+conv2d_2 (Conv2D)            (None, 16, 16, 64)        18496
 _________________________________________________________________
-conv2d_3 (Conv2D)            (None, 16, 16, 64)        36928     
+conv2d_3 (Conv2D)            (None, 16, 16, 64)        36928
 _________________________________________________________________
-max_pooling2d_1 (MaxPooling2 (None, 8, 8, 64)          0         
+max_pooling2d_1 (MaxPooling2 (None, 8, 8, 64)          0
 _________________________________________________________________
-conv2d_4 (Conv2D)            (None, 8, 8, 128)         73856     
+conv2d_4 (Conv2D)            (None, 8, 8, 128)         73856
 _________________________________________________________________
-conv2d_5 (Conv2D)            (None, 8, 8, 128)         147584    
+conv2d_5 (Conv2D)            (None, 8, 8, 128)         147584
 _________________________________________________________________
-max_pooling2d_2 (MaxPooling2 (None, 4, 4, 128)         0         
+max_pooling2d_2 (MaxPooling2 (None, 4, 4, 128)         0
 _________________________________________________________________
-flatten (Flatten)            (None, 2048)              0         
+flatten (Flatten)            (None, 2048)              0
 _________________________________________________________________
-dense (Dense)                (None, 128)               262272    
+dense (Dense)                (None, 128)               262272
 _________________________________________________________________
-dense_1 (Dense)              (None, 10)                1290      
+dense_1 (Dense)              (None, 10)                1290
 =================================================================
 Total params: 550,570
 Trainable params: 550,570
@@ -225,11 +225,11 @@ faulted_model.summary()
 ```
 Model: "sequential"
 _________________________________________________________________
-Layer (type)                 Output Shape              Param #   
+Layer (type)                 Output Shape              Param #
 =================================================================
-pixel_fi_layer (PixelFiLayer None                      0         
+pixel_fi_layer (PixelFiLayer None                      0
 _________________________________________________________________
-sequential (Sequential)      (None, 10)                550570    
+sequential (Sequential)      (None, 10)                550570
 =================================================================
 Total params: 550,570
 Trainable params: 550,570
@@ -246,8 +246,8 @@ print(f"loss={loss}, acc={acc}")
 ```
 
 ```sh
-313/313 [==============================] - 2s 6ms/step - loss: 1.2640 - categorical_accuracy: 0.7619
-loss=1.2701661586761475, acc=0.7605999708175659
+313/313 [==============================] - 50s 157ms/step - loss: 1.5091 - categorical_accuracy: 0.7165
+loss=1.5162289142608643, acc=0.7128000259399414
 ```
 
 ## Running unit tests
@@ -280,4 +280,3 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ```
-
