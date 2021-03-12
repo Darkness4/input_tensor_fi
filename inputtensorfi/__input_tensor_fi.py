@@ -19,7 +19,17 @@ class InputTensorFI(metaclass=ABCMeta):
     def build_faulted_model(
         model: tf.keras.Model,
         fi_layers: Optional[List[FiLayer]] = None,
-    ):
+    ) -> tf.keras.Model:
+        """Prepend FI Layers at the model.
+
+        Args:
+            model (tf.keras.Model): Model to be fault injected.
+            fi_layers (Optional[List[FiLayer]], optional):
+                    A list of layers injecting faults. Defaults to None.
+
+        Returns:
+            tf.keras.Model: A model which the input is faulted.
+        """
         if not fi_layers:
             fi_layers = []
             dtype = model.input.dtype

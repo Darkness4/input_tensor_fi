@@ -2,10 +2,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-from inputtensorfi.manipulation.img import utils
-import tensorflow as tf
-
-
 def plot_image(image, label_true=None, class_names=None, label_pred=None):
     if image.ndim == 4 and image.shape[0] == 1:
         image = image[0]

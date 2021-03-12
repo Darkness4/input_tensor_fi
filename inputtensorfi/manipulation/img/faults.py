@@ -6,7 +6,7 @@ from inputtensorfi.manipulation.bit.action import _BitAction
 
 @dataclass
 class PixelFault:
-    """A rgb positioned pixel."""
+    """A pîxel-fault description."""
 
     x: int
     y: int
@@ -28,7 +28,7 @@ class PixelFault:
 
 @dataclass
 class BitFault:
-    """A rgb positioned pixel."""
+    """A bit-fault description."""
 
     x: int
     y: int
