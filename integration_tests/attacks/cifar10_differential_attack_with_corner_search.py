@@ -3,22 +3,19 @@
 NOTE: The functions declaration should be ordered by call.
 """
 
-import itertools
+import json
 import os
-from typing import Dict, Tuple
+from typing import Dict
 
 import numpy as np
 import tensorflow as tf
-from inputtensorfi import InputTensorFI
-from inputtensorfi.attacks.corner_search import corner_search
-from inputtensorfi.attacks.utils import attack
-from inputtensorfi.helpers import utils
-from inputtensorfi.layers import PixelFiLayerTF
-from inputtensorfi.manipulation.img.faults import PixelFault
-from inputtensorfi.manipulation.img.utils import build_perturb_image
-from integration_tests.models.my_vgg import my_vgg
 from tensorflow.keras.datasets import cifar10
 from tensorflow.keras.utils import to_categorical
+
+from inputtensorfi.attacks.corner_search import corner_search
+from inputtensorfi.attacks.utils import attack
+from inputtensorfi.manipulation.img.faults import PixelFault
+from integration_tests.models.my_vgg import my_vgg
 
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(FILE_PATH, "../models/my_vgg.h5")
@@ -51,39 +48,6 @@ def __prepare_model(data_train, data_test):
 
     model.summary()
     return model
-
-
-def __find_fragile_images(
-    data_test: np.ndarray,
-    model: tf.keras.Model,
-    fragility_threshold=0.1,
-):
-    """Look for images which are sensible to FI.
-
-    "Fragile image" has these conditions :
-
-    -  y_pred_index == y_true_index
-    -  std(y_pred) < fragility_threshold
-    """
-    x_test, y_test = data_test
-    result = model.predict(x_test)
-
-    for i, y_pred in enumerate(result):
-        y_true = y_test[i]
-        y_true_index = np.argmax(y_true)
-        y_pred_index = np.argmax(y_pred)
-
-        if (
-            y_pred_index == y_true_index
-            and np.std(y_pred) < fragility_threshold
-        ):
-            print(
-                f"image {i} is fragile.\n"
-                f"std: {np.std(y_pred)}.\n"
-                f"y_pred[y_true_index]={y_pred[y_true_index]}\n"
-                f"y_pred[0]={y_pred[0]}\n"
-            )
-            yield i
 
 
 def _evaluate_one(
@@ -127,9 +91,7 @@ def _look_for_pixels(
 
     # Convert [x_0, y_0, r_0, g_0, b_0, x_1, ...]
     # to [pixel_fault_0, pixel_fault_1, ...]
-    return np.array(
-        [PixelFault(*pixels[0:5]) for i in range(len(pixels) // 5)]
-    )
+    return np.array([PixelFault(*pixels[0:5]) for i in range(len(pixels) // 5)])
 
 
 def test_cifar10_differential_attack_with_corner_search():
@@ -139,32 +101,33 @@ def test_cifar10_differential_attack_with_corner_search():
 
     y_preds = model.predict(x_test)
 
+    length = len(y_preds)
     y_fake = y_preds.copy()
+    total_faults: Dict[int, PixelFault] = dict()
     for image_id, _ in enumerate(y_test):
-        print(f"---{image_id}/{len(y_test)}---")
         if np.argmax(y_preds[image_id]) != np.argmax(y_test[image_id]):
-            print(f"MISPREDICTED image_id={image_id}")
-        print("---1. Look for pixels---")
+            print(f"MISPREDICTED {image_id}/{length}")
+            continue
         pixels = _look_for_pixels(image_id, data_test, model, pixel_count=10)
 
-        print("---2. Corner Search---")
         try:
-            first_pred = next(
-                corner_search(image_id, pixels, data_test, model)
-            )
-            _, y_pred = first_pred
+            first_pred = next(corner_search(image_id, pixels, data_test, model))
+            _, y_pred, pixel = first_pred
             y_fake[image_id] = y_pred
-            print(f"FAULT image_id={image_id}")
+            total_faults[image_id] = pixel
+            print(
+                f"FAULT {image_id}/{length}, {pixel}, original={data_test[0][image_id, pixel.x, pixel.y]}"
+            )
         except StopIteration:
-            print(f"NO FAULT image_id={image_id}")
+            # print(f"NO FAULT image_id={image_id}")
+            pass
+
+    dict_data = {key: fault.to_tuple() for key, fault in total_faults.items()}
+    print(f"total_faults={json.dumps(dict_data, indent=2)}")
 
     y_true_acc = np.array([np.max(y) for y in y_test])
-    y_preds_acc = np.array(
-        [y[np.argmax(y_true)] for y, y_true in zip(y_preds, y_test)]
-    )
-    y_fake_acc = np.array(
-        [y[np.argmax(y_true)] for y, y_true in zip(y_fake, y_test)]
-    )
+    y_preds_acc = np.array([y[np.argmax(y_true)] for y, y_true in zip(y_preds, y_test)])
+    y_fake_acc = np.array([y[np.argmax(y_true)] for y, y_true in zip(y_fake, y_test)])
     print(f"y_true_acc={np.mean(y_true_acc)}")
     print(f"y_prior_acc={np.mean(y_preds_acc)}")
     print(f"y_fake_acc={np.mean(y_fake_acc)}")

@@ -7,15 +7,16 @@ import os
 
 import numpy as np
 import tensorflow as tf
+from tensorflow.keras.datasets import cifar10
+from tensorflow.keras.utils import to_categorical
+
 from inputtensorfi import InputTensorFI
+from inputtensorfi.attacks.utils import attack
 from inputtensorfi.helpers import utils
 from inputtensorfi.layers import PixelFiLayerTF
 from inputtensorfi.manipulation.img.faults import PixelFault
 from inputtensorfi.manipulation.img.utils import build_perturb_image
-from inputtensorfi.attacks.utils import attack
 from integration_tests.models.my_vgg import my_vgg
-from tensorflow.keras.datasets import cifar10
-from tensorflow.keras.utils import to_categorical
 
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(FILE_PATH, "../models/my_vgg.h5")

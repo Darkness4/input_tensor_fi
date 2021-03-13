@@ -1,4 +1,4 @@
-from dataclasses import asdict, dataclass, fields
+from dataclasses import asdict, astuple, dataclass, fields
 from typing import Type
 
 from inputtensorfi.manipulation.bit.action import _BitAction
@@ -32,6 +32,9 @@ class PixelFault:
     def to_dict(self):
         return asdict(self)
 
+    def to_tuple(self):
+        return astuple(self)
+
 
 @dataclass
 class BitFault:
@@ -45,3 +48,6 @@ class BitFault:
 
     def to_dict(self):
         return asdict(self)
+
+    def to_tuple(self):
+        return astuple(self)

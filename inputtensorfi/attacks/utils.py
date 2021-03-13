@@ -1,10 +1,11 @@
+import logging
 from textwrap import dedent
-from typing import List, Optional
+from typing import Optional
 
 import numpy as np
 import tensorflow as tf
+
 from inputtensorfi.attacks.differential_evolution import differential_evolution
-from inputtensorfi.helpers import utils
 from inputtensorfi.manipulation.img.utils import (
     original_perturb_image,
     original_perturb_image_by_bit_fault,
@@ -30,11 +31,7 @@ def predict_classes_for_bit_attack(
 
 
 def attack_success(
-    x: np.ndarray,
-    img: np.ndarray,
-    y_true: int,
-    model: tf.keras.Model,
-    verbose=False,
+    x: np.ndarray, img: np.ndarray, y_true: int, model: tf.keras.Model
 ) -> Optional[bool]:
     """Predict ONE image and return True if expected. None otherwise."""
     attack_image = original_perturb_image(x, img)
@@ -44,18 +41,13 @@ def attack_success(
 
     # If the prediction is what we want (misclassification or
     # targeted classification), return True
-    if verbose:
-        print("Confidence:", confidence[y_true])
+    logging.debug("Confidence:", confidence[y_true])
     if predicted_class == y_true:
         return True
 
 
 def attack_by_bit_success(
-    x: np.ndarray,
-    img: np.ndarray,
-    y_true: int,
-    model: tf.keras.Model,
-    verbose=False,
+    x: np.ndarray, img: np.ndarray, y_true: int, model: tf.keras.Model
 ):
     """Predict ONE image and return True if expected. None otherwise."""
     attack_image = original_perturb_image_by_bit_fault(x, img)
@@ -65,8 +57,7 @@ def attack_by_bit_success(
 
     # If the prediction is what we want (misclassification or
     # targeted classification), return True
-    if verbose:
-        print("Confidence:", confidence[y_true])
+    logging.debug("Confidence:", confidence[y_true])
     if predicted_class == y_true:
         return True
 
@@ -97,7 +88,6 @@ def attack(
             img,
             y_true,
             model,
-            verbose=True,
         )
 
     # Call Scipy's Implementation of Differential Evolution
@@ -167,7 +157,6 @@ def attack_by_bit(
             img,
             y_true,
             model,
-            verbose=True,
         )
 
     # Call Scipy's Implementation of Differential Evolution
