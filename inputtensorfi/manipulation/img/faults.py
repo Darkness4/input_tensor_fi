@@ -1,4 +1,4 @@
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass, fields
 from typing import Type
 
 from inputtensorfi.manipulation.bit.action import _BitAction
@@ -13,6 +13,13 @@ class PixelFault:
     r: int
     g: int
     b: int
+
+    def __post_init__(self):
+        self.x = int(self.x)
+        self.y = int(self.y)
+        self.r = int(self.r)
+        self.g = int(self.g)
+        self.b = int(self.b)
 
     @property
     def coordinates(self):

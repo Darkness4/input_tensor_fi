@@ -28,6 +28,7 @@ def build_perturb_image(
         Returns:
             img: 2D RGB image.
         """
+        img = img.copy()
         for pixel in np.nditer(pixels, flags=["refs_ok"]):
             item = pixel.item()
             img[item.x, item.y] = item.rgb
@@ -58,7 +59,7 @@ def build_perturb_image_by_bit_fault(bit_faults: np.ndarray):
         Returns:
             img: 2D RGB image.
         """
-        # logging.warning(f"Pertubating an image of shape {img.shape}")
+        img = img.copy()
         for bit_fault in np.nditer(bit_faults, flags=["refs_ok"]):
             item = bit_fault.item()
 
@@ -151,3 +152,59 @@ def build_perturb_image_by_bit_fault_tensor(bit_faults: np.ndarray):
         )
 
     return perturb_image
+
+
+def original_perturb_image(xs, img):
+    # If this function is passed just one perturbation vector,
+    # pack it in a list to keep the computation the same
+    if xs.ndim < 2:
+        xs = np.array([xs])
+
+    # Copy the image n == len(xs) times so that we can
+    # create n new perturbed images
+    tile = [len(xs)] + [1] * (xs.ndim + 1)
+    imgs = np.tile(img, tile)
+
+    # Make sure to floor the members of xs as int types
+    xs = xs.astype(int)
+
+    for x, img in zip(xs, imgs):
+        # Split x into an array of 5-tuples (perturbation pixels)
+        # i.e., [[x,y,r,g,b], ...]
+        pixels = np.split(x, len(x) // 5)
+        for pixel in pixels:
+            # At each pixel's x,y position, assign its rgb value
+            x_pos, y_pos, *rgb = pixel
+            img[x_pos, y_pos] = rgb
+
+    return imgs
+
+
+def original_perturb_image_by_bit_fault(xs, img):
+    # If this function is passed just one perturbation vector,
+    # pack it in a list to keep the computation the same
+    if xs.ndim < 2:
+        xs = np.array([xs])
+
+    # Copy the image n == len(xs) times so that we can
+    # create n new perturbed images
+    tile = [len(xs)] + [1] * (xs.ndim + 1)
+    imgs = np.tile(img, tile)
+
+    # Make sure to floor the members of xs as int types
+    xs = xs.astype(int)
+
+    for x, img in zip(xs, imgs):
+        # Split x into an array of 5-tuples (perturbation pixels)
+        # i.e., [[𝑥,𝑦,rgb,bit,action], ...]
+        bits = np.split(x, len(x) // 5)
+        for bit2fault in bits:
+            # At each pixel's x,y position, assign its rgb value
+            x_pos, y_pos, rgb, bit, action = bit2fault
+            if action == 1:
+                img[x_pos, y_pos, rgb] = bit_set(img[x_pos, y_pos, rgb], bit)
+            elif action == 2:
+                img[x_pos, y_pos, rgb] = bit_reset(img[x_pos, y_pos, rgb], bit)
+            elif action == 3:
+                img[x_pos, y_pos, rgb] = bit_flip(img[x_pos, y_pos, rgb], bit)
+    return imgs

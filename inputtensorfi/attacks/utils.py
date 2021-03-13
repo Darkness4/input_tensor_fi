@@ -1,8 +1,44 @@
+from textwrap import dedent
+from typing import List, Optional
+
+import numpy as np
+import tensorflow as tf
+from inputtensorfi.attacks.differential_evolution import differential_evolution
+from inputtensorfi.helpers import utils
+from inputtensorfi.manipulation.img.utils import original_perturb_image
+
+
+def predict_classes(
+    xs: np.ndarray, img: np.ndarray, y_true: int, model: tf.keras.Model
+) -> np.ndarray:
+    """Perturb the image and get the predictions of the model.
+
+    Args:
+        xs (np.ndarray): A 2D array of PixelFault.
+        img (np.ndarray): One image (shape=(h, v, channels)).
+        y_true (int): Index of the true class (categorical).
+        model (tf.keras.Model): A model (not faulted).
+        minimize (bool, optional): Return the complement if needed.
+            Defaults to True.
+
+    Returns:
+        np.ndarray: predictions for the true model, i.e.:
+            model.predict(imgs)[:, y_true]
+    """
+    imgs_perturbed = original_perturb_image(xs, img)
+    predictions = model.predict(imgs_perturbed)[:, y_true]
+    return predictions
+
+
 def attack_success(
-    x, img, target_class: int, model, targeted_attack=False, verbose=False
-):
-    # Perturb the image with the given pixel(s) and get the prediction of the model
-    attack_image = perturb_image(x, img)
+    x: np.ndarray,
+    img: np.ndarray,
+    y_true: int,
+    model: tf.keras.Model,
+    verbose=False,
+) -> Optional[bool]:
+    """Predict ONE image and return True if expected. None otherwise."""
+    attack_image = original_perturb_image(x, img)
 
     confidence = model.predict(attack_image)[0]
     predicted_class = np.argmax(confidence)
@@ -10,26 +46,21 @@ def attack_success(
     # If the prediction is what we want (misclassification or
     # targeted classification), return True
     if verbose:
-        print("Confidence:", confidence[target_class])
-    if (targeted_attack and predicted_class == target_class) or (
-        not targeted_attack and predicted_class != target_class
-    ):
+        print("Confidence:", confidence[y_true])
+    if predicted_class == y_true:
         return True
 
 
 def attack(
-    img_id: int,
-    model,
-    target=None,
+    img: np.ndarray,
+    y_true: int,
+    model: tf.keras.Model,
+    class_names: List[str],
     pixel_count=1,
     maxiter=75,
     popsize=400,
     verbose=False,
 ):
-    # Change the target class based on whether this is a targeted attack or not
-    targeted_attack = target is not None
-    target_class = target if targeted_attack else y_test[img_id, 0]
-
     # Define bounds for a flat vector of x,y,r,g,b values
     # For more pixels, repeat this layout
     bounds = [(0, 32), (0, 32), (0, 256), (0, 256), (0, 256)] * pixel_count
@@ -39,13 +70,15 @@ def attack(
 
     # Format the predict/callback functions for the differential evolution algorithm
     def predict_fn(xs):
-        return predict_classes(
-            xs, x_test[img_id], target_class, model, target is None
-        )
+        return predict_classes(xs, img, y_true, model)
 
     def callback_fn(x, convergence):
         return attack_success(
-            x, x_test[img_id], target_class, model, targeted_attack, verbose
+            x,
+            img,
+            y_true,
+            model,
+            verbose,
         )
 
     # Call Scipy's Implementation of Differential Evolution
@@ -61,26 +94,29 @@ def attack(
     )
 
     # Calculate some useful statistics to return from this function
-    attack_image = perturb_image(attack_result.x, x_test[img_id])[0]
-    prior_probs = model.predict_one(x_test[img_id])
-    predicted_probs = model.predict_one(attack_image)
+    attack_image = original_perturb_image(attack_result.x, img)[0]
+    prior_probs = model.predict(np.array([img]))[0]
+    prior_class = np.argmax(prior_probs)
+    predicted_probs = model.predict(np.array([attack_image]))[0]
     predicted_class = np.argmax(predicted_probs)
-    actual_class = y_test[img_id, 0]
-    success = predicted_class != actual_class
-    cdiff = prior_probs[actual_class] - predicted_probs[actual_class]
+    success = predicted_class != y_true
+    cdiff = prior_probs[y_true] - predicted_probs[y_true]
 
-    # Show the best attempt at a solution (successful or not)
-    helper.plot_image(attack_image, actual_class, class_names, predicted_class)
+    if verbose:
+        print(
+            dedent(
+                "-- TRUTH --\n"
+                f"y_true={y_true}\n"
+                "-- W/O FI PREDS --\n"
+                f"prior_probs={prior_probs}\n"
+                f"prior_class={prior_class}\n"
+                "-- FI PREDS --\n"
+                f"attack_results={attack_result.x}\n"
+                f"predicted_probs={predicted_probs}\n"
+                f"predicted_class={predicted_class}\n"
+                f"success={success}\n"
+                f"cdiff={cdiff}\n"
+            )
+        )
 
-    return [
-        model.name,
-        pixel_count,
-        img_id,
-        actual_class,
-        predicted_class,
-        success,
-        cdiff,
-        prior_probs,
-        predicted_probs,
-        attack_result.x,
-    ]
+    return attack_result.x

@@ -1,18 +1,12 @@
 import os
-from datetime import datetime
 
 import numpy as np
 import tensorflow as tf
 from inputtensorfi import InputTensorFI
 from inputtensorfi.helpers import utils
-from inputtensorfi.layers import PixelFiLayer, PixelFiLayerTF
+from inputtensorfi.layers import PixelFiLayerTF
 from inputtensorfi.manipulation.img.faults import PixelFault
-from inputtensorfi.manipulation.img.utils import (
-    build_perturb_image,
-    build_perturb_image_by_bit_fault,
-    build_perturb_image_by_bit_fault_tensor,
-    build_perturb_image_tensor,
-)
+from inputtensorfi.manipulation.img.utils import build_perturb_image
 from integration_tests.models.my_vgg import my_vgg
 from tensorflow.keras.datasets import cifar10
 from tensorflow.keras.utils import to_categorical
@@ -59,13 +53,16 @@ def test_cifar10_one():
     x_test, y_test = data_test
     x = x_test[image_id]
     y_true = y_test[image_id]
+    y_true_index = np.argmax(y_true)
+
     result = model.predict(np.array([x]))[0]
+    result_index = np.argmax(result)
 
     print(f"result={result}")
-    print(f"result_index={np.argmax(result)}")
+    print(f"result_index={result_index}")
     print(f"y_true={y_true}")
-    print(f"y_true_index={np.argmax(y_true)}")
-    print(f"result_confidence={result[np.argmax(y_true)]}")
+    print(f"y_true_index={y_true_index}")
+    print(f"result[y_true_index]={result[y_true_index]}")
 
     print("---Fault Injection---")
     pixels = np.array(
@@ -86,17 +83,16 @@ def test_cifar10_one():
 
     print("---Evaluation with FI---")
     result = faulted_model.predict(np.array([x_test[image_id]]))[0]
+    result_index = np.argmax(result)
     print(f"result={result}")
-    print(f"result_index={np.argmax(result)}")
+    print(f"result_index={result_index}")
     print(f"y_true={y_true}")
-    print(f"y_true_index={np.argmax(y_true)}")
-    print(f"result_confidence={result[np.argmax(y_true)]}")
+    print(f"y_true_index={y_true_index}")
+    print(f"result[y_true_index]={result[y_true_index]}")
 
     # Plot
-    perturbated_image = build_perturb_image_tensor(pixels)(
-        tf.constant(x_test[image_id])
-    )
-    utils.plot_image(perturbated_image.numpy())
+    perturbated_image = build_perturb_image(pixels)(x_test[image_id])
+    utils.plot_image(perturbated_image)
 
 
 if __name__ == "__main__":
