@@ -3,16 +3,19 @@
 NOTE: The functions declaration should be ordered by call.
 """
 
+import itertools
 import os
+from typing import Dict, Tuple
 
 import numpy as np
 import tensorflow as tf
 from inputtensorfi import InputTensorFI
+from inputtensorfi.attacks.corner_search import corner_search
+from inputtensorfi.attacks.utils import attack
 from inputtensorfi.helpers import utils
 from inputtensorfi.layers import PixelFiLayerTF
 from inputtensorfi.manipulation.img.faults import PixelFault
 from inputtensorfi.manipulation.img.utils import build_perturb_image
-from inputtensorfi.attacks.utils import attack
 from integration_tests.models.my_vgg import my_vgg
 from tensorflow.keras.datasets import cifar10
 from tensorflow.keras.utils import to_categorical
@@ -27,7 +30,7 @@ def __prepare_datasets():
 
     y_train = to_categorical(y_train)
     y_test = to_categorical(y_test)
-    return (x_train, y_train), (x_test, y_test)
+    return (x_train, y_train), (x_test[:2000], y_test[:2000])
 
 
 def __prepare_model(data_train, data_test):
@@ -70,7 +73,10 @@ def __find_fragile_images(
         y_true_index = np.argmax(y_true)
         y_pred_index = np.argmax(y_pred)
 
-        if y_pred_index == y_true_index and np.std(y_pred) < fragility_threshold:
+        if (
+            y_pred_index == y_true_index
+            and np.std(y_pred) < fragility_threshold
+        ):
             print(
                 f"image {i} is fragile.\n"
                 f"std: {np.std(y_pred)}.\n"
@@ -104,6 +110,7 @@ def _look_for_pixels(
     image_id: int,
     data_test: np.ndarray,
     model: tf.keras.Model,
+    pixel_count=1,
 ):
     x_test, y_test = data_test
     x = x_test[image_id]
@@ -113,45 +120,55 @@ def _look_for_pixels(
         x,
         y_true_index,
         model,
-        pixel_count=1,  # Number of pixels to attack
-        verbose=True,
+        pixel_count=pixel_count,
+        maxiter=10,
+        verbose=False,
     ).astype(np.uint8)
 
     # Convert [x_0, y_0, r_0, g_0, b_0, x_1, ...]
     # to [pixel_fault_0, pixel_fault_1, ...]
-    return np.array([PixelFault(*pixels[0:5]) for i in range(len(pixels) // 5)])
-
-
-def test_cifar10_differential_attack():
-    data_train, data_test = __prepare_datasets()
-    model = __prepare_model(data_train, data_test)
-
-    print("--Search for fragile images--")
-    fragile_imgs = list(__find_fragile_images(data_test, model))
-
-    print("---Evaluation---")
-    image_id = min(fragile_imgs)  # Choose the most fragile
-    _evaluate_one(image_id, data_test, model)
-
-    print("---Look for x---")
-    pixels = _look_for_pixels(image_id, data_test, model)
-    print(f"pixels={pixels}")
-
-    print("---Fault Injection---")
-    faulted_model = InputTensorFI.build_faulted_model(
-        model,
-        fi_layers=[
-            PixelFiLayerTF(pixels, dtype=tf.uint8),
-        ],
+    return np.array(
+        [PixelFault(*pixels[0:5]) for i in range(len(pixels) // 5)]
     )
 
-    print("---Evaluation with FI---")
-    _evaluate_one(image_id, data_test, faulted_model)
 
-    # Plot
-    perturbated_image = build_perturb_image(pixels)(data_test[0][image_id])
-    utils.plot_image(perturbated_image)
+def test_cifar10_differential_attack_with_corner_search():
+    data_train, data_test = __prepare_datasets()
+    x_test, y_test = data_test
+    model = __prepare_model(data_train, data_test)
+
+    y_preds = model.predict(x_test)
+
+    y_fake = y_preds.copy()
+    for image_id, _ in enumerate(y_test):
+        print(f"---{image_id}/{len(y_test)}---")
+        if np.argmax(y_preds[image_id]) != np.argmax(y_test[image_id]):
+            print(f"MISPREDICTED image_id={image_id}")
+        print("---1. Look for pixels---")
+        pixels = _look_for_pixels(image_id, data_test, model, pixel_count=10)
+
+        print("---2. Corner Search---")
+        try:
+            first_pred = next(
+                corner_search(image_id, pixels, data_test, model)
+            )
+            _, y_pred = first_pred
+            y_fake[image_id] = y_pred
+            print(f"FAULT image_id={image_id}")
+        except StopIteration:
+            print(f"NO FAULT image_id={image_id}")
+
+    y_true_acc = np.array([np.max(y) for y in y_test])
+    y_preds_acc = np.array(
+        [y[np.argmax(y_true)] for y, y_true in zip(y_preds, y_test)]
+    )
+    y_fake_acc = np.array(
+        [y[np.argmax(y_true)] for y, y_true in zip(y_fake, y_test)]
+    )
+    print(f"y_true_acc={np.mean(y_true_acc)}")
+    print(f"y_prior_acc={np.mean(y_preds_acc)}")
+    print(f"y_fake_acc={np.mean(y_fake_acc)}")
 
 
 if __name__ == "__main__":
-    test_cifar10_differential_attack()
+    test_cifar10_differential_attack_with_corner_search()

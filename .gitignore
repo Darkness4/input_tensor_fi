@@ -153,3 +153,7 @@ dmypy.json
 *tfevent*
 
 # End of https://www.toptal.com/developers/gitignore/api/python,vscode
+
+*.h5
+*.pb
+*.gz
