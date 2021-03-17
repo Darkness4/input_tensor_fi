@@ -5,8 +5,8 @@ from typing import Callable
 import numpy as np
 import tensorflow as tf
 
+from inputtensorfi.attacks.utils import build_parallel_attack_as_tf
 from inputtensorfi.manipulation.img.utils import (
-    build_parallel_attack_as_tf,
     build_perturb_image,
     build_perturb_image_by_bit_fault,
     build_perturb_image_by_bit_fault_tensor,
@@ -141,7 +141,7 @@ class DifferentialAttackLayer(tf.keras.layers.Layer):
         popsize=400,
         verbose=False,
     ):
-        super(DifferentialAttackLayer, self).__init__(dtype=dtype)
+        super(DifferentialAttackLayer, self).__init__(dtype=tf.double)
 
         self.y_trues = y_trues
 
