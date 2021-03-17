@@ -41,7 +41,7 @@ def attack_success(
 
     # If the prediction is what we want (misclassification or
     # targeted classification), return True
-    logging.debug("Confidence:", confidence[y_true])
+    logging.debug(f"Confidence: {confidence[y_true]}")
     if predicted_class == y_true:
         return True
 
@@ -57,78 +57,129 @@ def attack_by_bit_success(
 
     # If the prediction is what we want (misclassification or
     # targeted classification), return True
-    logging.debug("Confidence:", confidence[y_true])
+    logging.debug(f"Confidence: {confidence[y_true]}")
     if predicted_class == y_true:
         return True
 
 
-def attack(
-    img: np.ndarray,
-    y_true: int,
+def build_attack(
     model: tf.keras.Model,
     pixel_count=1,
     maxiter=75,
     popsize=400,
     verbose=False,
 ):
-    # Define bounds for a flat vector of x,y,r,g,b values
-    # For more pixels, repeat this layout
-    bounds = [(0, 32), (0, 32), (0, 256), (0, 256), (0, 256)] * pixel_count
+    def attack(
+        img: np.ndarray,
+        y_true: int,
+    ):
+        # Define bounds for a flat vector of x,y,r,g,b values
+        # For more pixels, repeat this layout
+        bounds = [(0, 32), (0, 32), (0, 256), (0, 256), (0, 256)] * pixel_count
 
-    # Population multiplier, in terms of the size of the perturbation vector x
-    popmul = max(1, popsize // len(bounds))
+        # Population multiplier, in terms of the size of the perturbation vector x
+        popmul = max(1, popsize // len(bounds))
 
-    # Format the predict/callback functions for the differential evolution algorithm
-    def predict_fn(xs):
-        return predict_classes(xs, img, y_true, model)
+        # Format the predict/callback functions for the differential evolution algorithm
+        def predict_fn(xs):
+            return predict_classes(xs, img, y_true, model)
 
-    def callback_fn(x, convergence):
-        return attack_success(
-            x,
-            img,
-            y_true,
-            model,
+        def callback_fn(x, convergence):
+            return attack_success(
+                x,
+                img,
+                y_true,
+                model,
+            )
+
+        # Call Scipy's Implementation of Differential Evolution
+        attack_result = differential_evolution(
+            predict_fn,
+            bounds,
+            maxiter=maxiter,
+            popsize=popmul,
+            recombination=1,
+            atol=-1,
+            callback=callback_fn,
+            polish=False,
         )
 
-    # Call Scipy's Implementation of Differential Evolution
-    attack_result = differential_evolution(
-        predict_fn,
-        bounds,
+        if verbose:
+            # Calculate some useful statistics to return from this function
+            attack_image = original_perturb_image(attack_result.x, img)[0]
+            prior_probs = model.predict(np.array([img]))[0]
+            prior_class = np.argmax(prior_probs)
+            predicted_probs = model.predict(np.array([attack_image]))[0]
+            predicted_class = np.argmax(predicted_probs)
+            success = predicted_class != y_true
+            cdiff = prior_probs[y_true] - predicted_probs[y_true]
+
+            print(
+                dedent(
+                    "-- TRUTH --\n"
+                    f"y_true={y_true}\n"
+                    "-- W/O FI PREDS --\n"
+                    f"prior_probs={prior_probs}\n"
+                    f"prior_class={prior_class}\n"
+                    "-- FI PREDS --\n"
+                    f"attack_results={attack_result.x}\n"
+                    f"predicted_probs={predicted_probs}\n"
+                    f"predicted_class={predicted_class}\n"
+                    f"success={success}\n"
+                    f"cdiff={cdiff}\n"
+                )
+            )
+
+        return attack_result.x
+
+    return attack
+
+
+def build_attack_as_tf(
+    model: tf.keras.Model,
+    pixel_count=1,
+    maxiter=75,
+    popsize=400,
+    verbose=False,
+):
+    attack = build_attack(
+        model,
+        pixel_count=pixel_count,
         maxiter=maxiter,
-        popsize=popmul,
-        recombination=1,
-        atol=-1,
-        callback=callback_fn,
-        polish=False,
+        popsize=popsize,
+        verbose=verbose,
     )
 
-    if verbose:
-        # Calculate some useful statistics to return from this function
-        attack_image = original_perturb_image(attack_result.x, img)[0]
-        prior_probs = model.predict(np.array([img]))[0]
-        prior_class = np.argmax(prior_probs)
-        predicted_probs = model.predict(np.array([attack_image]))[0]
-        predicted_class = np.argmax(predicted_probs)
-        success = predicted_class != y_true
-        cdiff = prior_probs[y_true] - predicted_probs[y_true]
+    def attack_as_tf(img, y_true):
+        return tf.numpy_function(attack, [img, y_true], tf.double)
 
-        print(
-            dedent(
-                "-- TRUTH --\n"
-                f"y_true={y_true}\n"
-                "-- W/O FI PREDS --\n"
-                f"prior_probs={prior_probs}\n"
-                f"prior_class={prior_class}\n"
-                "-- FI PREDS --\n"
-                f"attack_results={attack_result.x}\n"
-                f"predicted_probs={predicted_probs}\n"
-                f"predicted_class={predicted_class}\n"
-                f"success={success}\n"
-                f"cdiff={cdiff}\n"
-            )
+    return attack_as_tf
+
+
+def build_parallel_attack_as_tf(
+    model,
+    pixel_count=1,
+    maxiter=75,
+    popsize=400,
+    verbose=False,
+):
+    @tf.function
+    def parallel_attack_as_tf(
+        imgs,
+        y_trues,
+    ):
+        attack_as_tf = build_attack_as_tf(
+            model,
+            pixel_count=pixel_count,
+            maxiter=maxiter,
+            popsize=popsize,
+            verbose=verbose,
+        )
+        return tf.vectorized_map(
+            lambda x: attack_as_tf(x[0], x[1]), elems=[imgs, y_trues]
         )
 
-    return attack_result.x
+    return parallel_attack_as_tf
 
 
 def attack_by_bit(

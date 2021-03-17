@@ -6,10 +6,11 @@ import numpy as np
 import tensorflow as tf
 
 from inputtensorfi.manipulation.img.utils import (
+    build_parallel_attack_as_tf,
     build_perturb_image,
     build_perturb_image_by_bit_fault,
-    build_perturb_image_tensor,
     build_perturb_image_by_bit_fault_tensor,
+    build_perturb_image_tensor,
 )
 
 
@@ -87,7 +88,8 @@ class PixelBitFiLayer(FiLayer):
 class PixelFiLayerTF(FiLayer):
     """A layer that modify the pixels of the input.
 
-    Only accepts 2D RGB 8 bit images."""
+    Only accepts 2D RGB 8 bit images.
+    """
 
     def __init__(self, pixels: np.ndarray, dtype: tf.DType = tf.uint8):
         super(PixelFiLayerTF, self).__init__(dtype=dtype)
@@ -101,6 +103,11 @@ class PixelFiLayerTF(FiLayer):
 
 
 class PixelBitFiLayerTF(FiLayer):
+    """A layer that modify the bit of pixels of the input.
+
+    Only accepts 2D RGB 8 bit images.
+    """
+
     def __init__(self, bit_faults: np.ndarray, dtype: tf.DType = tf.uint8):
         super(PixelBitFiLayerTF, self).__init__(dtype=dtype)
         self.bit_faults = bit_faults
@@ -115,3 +122,40 @@ class PixelBitFiLayerTF(FiLayer):
             bit_fault.to_dict() for bit_fault in self.bit_faults
         ]
         return base_config
+
+
+class DifferentialAttackLayer(tf.keras.layers.Layer):
+    """Find pixel faults using Differential Evolution.
+
+    This is not quite a FiLayer, so don't plug it in InputTensorFi.
+
+    Returns: [x, y, r, g, b] per image.
+    """
+
+    def __init__(
+        self,
+        model: tf.keras.Model,
+        y_trues: np.ndarray,
+        pixel_count=1,
+        maxiter=75,
+        popsize=400,
+        verbose=False,
+    ):
+        super(DifferentialAttackLayer, self).__init__(dtype=dtype)
+
+        self.y_trues = y_trues
+
+        self.attack = build_parallel_attack_as_tf(
+            model,
+            pixel_count=pixel_count,
+            maxiter=maxiter,
+            popsize=popsize,
+            verbose=verbose,
+        )
+
+    def call(self, input, training=False):
+        if not training:
+            return self.attack(input, self.y_trues)
+        else:
+            logging.warning(f"{type(self).__name__} is ignored on training.")
+            return input
